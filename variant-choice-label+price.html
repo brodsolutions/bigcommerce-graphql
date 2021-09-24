@@ -1,0 +1,60 @@
+<script>
+    function getVariants() {
+            fetch('/graphql', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer {{settings.storefront_api.token}}'
+                },
+                body: JSON.stringify({
+                    query: `
+                    {
+  site {
+    product(entityId: {{product.id}}) {
+          variants {
+            edges {
+              node {
+                inventory{
+                  isInStock
+                }
+                prices{
+                  basePrice {
+                    value
+                  }
+                }
+                options{
+                  edges{
+                    node{
+                      values{
+                        edges{
+                          node{
+                            label
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+                    `
+                })
+            })
+            .then(res => res.json())
+            .then(json => doSomething(json.data.site.product.variants.edges));
+        };
+    function doSomething(variants){
+        variants.forEach((element, index) => {
+            var inStock = element.node.inventory.isInStock;
+            if(inStock == true){
+                document.getElementsByClassName('form-select')[0].options[index].text = element.node.options.edges[0].node.values.edges[0].node.label+" $"+element.node.prices.basePrice.value;
+            }
+        });
+    }
+    getVariants();
+</script>
