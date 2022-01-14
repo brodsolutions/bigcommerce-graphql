@@ -1,0 +1,89 @@
+<div id="metafield-inventory">
+  <hr />
+  <dt>Inventory</dt>
+</div>
+<script>
+  var variantOptions = [];
+  function getVariants() {
+    fetch("/graphql", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer {{settings.storefront_api.token}}",
+      },
+      body: JSON.stringify({
+        query: ` {
+          customer {
+            attributes {
+              attribute (entityId: 1) {
+                value
+              }
+            }
+          }
+          site {
+            product(entityId: {{product.id}}) {
+                variants {
+                edges {
+                  node {
+                    sku
+                    entityId
+                    metafields(
+                      namespace: "Connect"
+                      keys: ["Inventory_TCO", "Inventory_TMI"]
+                      first: 2
+                    ) {
+                      edges {
+                        node {
+                          key
+                          entityId
+                          id
+                          value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }`,
+      }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        doSomething(json.data.site.product.variants.edges, json.data.customer);
+      });
+  }
+  function doSomething(variants, customer) {
+    if (customer == null || variants == null) {
+      document.getElementById("metafield-inventory").remove();
+    } else {
+      variants.forEach((element, index) => {
+        var inventory = [];
+        element.node.metafields.edges.forEach((metafield, i) => {
+          inventory.push({
+            [metafield.node.key]: metafield.node.value,
+          });
+        });
+        variantOptions.push({
+          variant_id: element.node.entityId,
+          variant_sku: element.node.sku,
+          inventory: inventory,
+        });
+      });
+
+      variantOptions[0].inventory.forEach((element, index) => {
+        if (Object.keys(element) == "Inventory_"+customer.attributes.attribute.value) {
+          var node = document.createElement("dd");
+          var textnode = document.createTextNode(
+            "Available: " + Object.values(element)
+          );
+          node.appendChild(textnode);
+          document.getElementById("metafield-inventory").appendChild(node);
+        }
+      });
+    }
+  }
+  getVariants();
+</script>
